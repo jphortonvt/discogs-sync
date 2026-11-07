@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>discogs-sync · matching…</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body class="loading-body">
+  <header>
+    <h1>discogs-sync</h1>
+    <div class="meta">
+      Folder: <strong>{{ folder }}</strong>
+      {% if limit %} · pulling next <strong>{{ limit }}</strong> unprocessed releases{% endif %}
+    </div>
+  </header>
+
+  <main class="loading-main">
+    <div class="loading-card">
+      <h2>Matching against YouTube Music…</h2>
+
+      <ol class="phase-list">
+        <li id="phase-discogs"><span class="phase-icon">○</span> Pulling from Discogs</li>
+        <li id="phase-ytm"><span class="phase-icon">○</span> Searching YouTube Music</li>
+        <li id="phase-annotate"><span class="phase-icon">○</span> Annotating against your library</li>
+      </ol>
+
+      <div class="progress-bar"><div id="progress-fill"></div></div>
+      <p id="progress-text" class="dim">Starting…</p>
+      <p id="progress-current" class="dim"></p>
+
+      <p class="hint">This screen will reload to the review UI when matching is done.</p>
+
+      <pre id="error-output" class="hidden error"></pre>
+    </div>
+  </main>
+
+  <script>
+    const phases = {
+      discogs_fetch: "phase-discogs",
+      ytm_search: "phase-ytm",
+      annotate: "phase-annotate",
+    };
+
+    const fill = document.getElementById("progress-fill");
+    const text = document.getElementById("progress-text");
+    const current = document.getElementById("progress-current");
+    const errorOut = document.getElementById("error-output");
+    const startTime = Date.now();
+
+    function setPhaseIcon(id, icon, klass) {
+      const li = document.getElementById(id);
+      if (!li) return;
+      li.querySelector(".phase-icon").textContent = icon;
+      li.className = klass || "";
+    }
+
+    async function poll() {
+      try {
+        const r = await fetch("/match-progress");
+        const s = await r.json();
+        const phase = s.phase || "starting";
+
+        // Phase icons: completed ✓, active …, pending ○
+        const order = ["discogs_fetch", "ytm_search", "annotate", "done"];
+        const cur = order.indexOf(phase);
+        order.slice(0, -1).forEach((p, idx) => {
+          if (idx < cur) setPhaseIcon(phases[p], "✓", "complete");
+          else if (idx === cur) setPhaseIcon(phases[p], "…", "active");
+          else setPhaseIcon(phases[p], "○", "");
+        });
+
+        if (s.status === "running") {
+          if (phase === "discogs_fetch") {
+            const fetched = s.fetched || 0;
+            const cap = (s.limit) || 1000;  // unknown, use limit hint
+            text.innerText = `Pulling release ${fetched} from Discogs…`;
+            // No reliable total during fetch; show indeterminate pulse via 30% bar
+            fill.style.width = Math.min(30, fetched / 30) + "%";
+            current.innerText = "";
+          } else if (phase === "ytm_search") {
+            const i = s.i || 0;
+            const total = s.total || 0;
+            const pct = total > 0 ? Math.round((i / total) * 100) : 0;
+            fill.style.width = pct + "%";
+            const elapsed = (Date.now() - startTime) / 1000;
+            const rate = i > 0 ? elapsed / i : 0;
+            const eta = rate > 0 && i < total ? Math.round((total - i) * rate) : 0;
+            const etaStr = eta > 60 ? `~${Math.round(eta / 60)} min left` : (eta > 0 ? `~${eta}s left` : "");
+            text.innerText = `Searching YTM: ${i} / ${total}  (${pct}%)  ${etaStr}`;
+            current.innerText = s.current ? "Now matching: " + s.current : "";
+          } else if (phase === "annotate") {
+            const i = s.i || 0;
+            const total = s.total || 0;
+            const pct = total > 0 ? Math.round((i / total) * 100) : 99;
+            fill.style.width = pct + "%";
+            text.innerText = total > 0 ? `Annotating against library: ${i} / ${total}` : "Loading your YTM library…";
+            current.innerText = "";
+          } else {
+            text.innerText = "Starting…";
+          }
+        } else if (s.status === "done") {
+          fill.style.width = "100%";
+          text.innerText = "Done. Loading review UI…";
+          ["phase-discogs", "phase-ytm", "phase-annotate"].forEach(id => setPhaseIcon(id, "✓", "complete"));
+          setTimeout(() => location.reload(), 500);
+          return;
+        } else if (s.status === "error") {
+          text.innerText = "";
+          errorOut.classList.remove("hidden");
+          errorOut.innerText = "Matching failed: " + (s.error || "unknown");
+          return;
+        }
+        setTimeout(poll, 1000);
+      } catch (e) {
+        setTimeout(poll, 2000);
+      }
+    }
+    poll();
+  </script>
+</body>
+</html>

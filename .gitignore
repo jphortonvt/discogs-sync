@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# Local state & data
+*.db
+*.db-journal
+out/
+reports/
+*.json
+!tests/**/*.json
+
+# Credentials — never commit these
+.env
+.env.*
+config.toml
+*headers*.txt
+yt-headers*
+oauth.json
+browser.json
+*.pem
+*.key
+
+# OS
+.DS_Store

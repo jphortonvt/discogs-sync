@@ -1,0 +1,15 @@
+<li class="row already">
+  <div class="row-check"><span class="tick" title="Already in your YTM library">✓</span></div>
+  <div class="row-body">
+    <div class="row-line">
+      <span class="left">{{ r.release.artist }} — {{ r.release.title }}{% if r.release.year %} ({{ r.release.year }}){% endif %}</span>
+      <span class="arrow">→</span>
+      <span class="right">{{ r.best.candidate.artist }} — {{ r.best.candidate.title }}</span>
+      <span class="score" title="match score">{{ (r.best.score * 100)|int }}%</span>
+    </div>
+    <div class="row-line sub dim">
+      <span class="left">already in your YTM library — nothing to do</span>
+      <span class="right">ytmusic id: <code>{{ r.best.candidate.target_id }}</code></span>
+    </div>
+  </div>
+</li>

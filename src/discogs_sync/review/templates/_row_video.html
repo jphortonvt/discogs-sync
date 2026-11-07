@@ -1,0 +1,46 @@
+<li class="row video">
+  <label class="row-check">
+    <input
+      type="checkbox"
+      {% if r.video_candidate %}
+        hx-post="/toggle"
+        hx-trigger="change"
+        hx-swap="none"
+        data-refresh-summary="1"
+        name="on"
+        hx-vals='{
+          "release_id": "{{ r.release.source_id }}",
+          "kind": "video",
+          "target_id": "{{ r.video_candidate.target_id }}",
+          "title": {{ r.video_candidate.title|tojson }},
+          "artist": {{ r.video_candidate.channel|tojson }},
+          "on": "true"
+        }'
+        {% if selections.get(r.release.source_id) and selections[r.release.source_id]['kind'] == 'video' %}checked{% endif %}
+      {% else %}
+        disabled
+      {% endif %}
+    />
+  </label>
+  <div class="row-body">
+    <div class="row-line">
+      <span class="left">{{ r.release.artist }} — {{ r.release.title }}{% if r.release.year %} ({{ r.release.year }}){% endif %}</span>
+      <span class="right dim">✗ no album on YouTube Music</span>
+    </div>
+    {% if r.video_candidate %}
+      <div class="row-line sub">
+        <span class="left">
+          ◐ video:
+          <a href="https://music.youtube.com/watch?v={{ r.video_candidate.target_id }}" target="_blank">{{ r.video_candidate.title }}</a>
+          — {{ r.video_candidate.channel }}{% if r.video_candidate.is_topic_channel %} <span class="tag">topic</span>{% endif %}
+          {% if r.video_candidate.duration_seconds %}
+            · {{ (r.video_candidate.duration_seconds // 60) }}:{{ '%02d' % (r.video_candidate.duration_seconds % 60) }}
+          {% endif %}
+        </span>
+        <span class="score">{{ (r.video_score * 100)|int }}%</span>
+      </div>
+    {% else %}
+      <div class="row-line sub dim">✗ no plausible video either</div>
+    {% endif %}
+  </div>
+</li>

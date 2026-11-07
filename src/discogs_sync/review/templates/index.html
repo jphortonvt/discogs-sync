@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>discogs-sync · {{ folder }}</title>
+  <link rel="stylesheet" href="/static/app.css" />
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+  <header>
+    <h1>discogs-sync</h1>
+    <div class="meta">
+      Folder: <strong>{{ folder }}</strong>
+      &middot; <span>{{ strong|length }} strong &middot; {{ review|length }} review &middot; {{ no_match|length }} no album match &middot; {{ already|length }} already in library</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="bucket">
+      <h2>Strong matches <span class="count">({{ strong|length }})</span></h2>
+      {% if strong %}
+        <ul class="rows">
+          {% for r in strong %}{% include "_row_album.html" %}{% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">None.</p>
+      {% endif %}
+    </section>
+
+    <section class="bucket">
+      <h2>Needs review <span class="count">({{ review|length }})</span></h2>
+      {% if review %}
+        <ul class="rows">
+          {% for r in review %}{% include "_row_review.html" %}{% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">None.</p>
+      {% endif %}
+    </section>
+
+    <section class="bucket">
+      <h2>No album match <span class="count">({{ no_match|length }})</span></h2>
+      <p class="hint">Videos will be added to playlist <code>{{ video_playlist }}</code>.</p>
+      {% if no_match %}
+        <ul class="rows">
+          {% for r in no_match %}{% include "_row_video.html" %}{% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">None.</p>
+      {% endif %}
+    </section>
+
+    <section class="bucket already-section">
+      <h2>
+        <button class="collapse-toggle" onclick="document.getElementById('already-list').classList.toggle('hidden'); this.classList.toggle('open');" aria-expanded="false">
+          <span class="caret">▸</span>
+          Already in YTM library <span class="count">({{ already|length }})</span>
+        </button>
+      </h2>
+      <div id="already-list" class="hidden">
+        <p class="hint">These Discogs releases are already in your YouTube Music library. Nothing to do here.</p>
+        {% if already %}
+          <ul class="rows">
+            {% for r in already %}{% include "_row_already.html" %}{% endfor %}
+          </ul>
+        {% else %}
+          <p class="empty">None.</p>
+        {% endif %}
+      </div>
+    </section>
+  </main>
+
+  <footer class="sticky">
+    <div id="summary" hx-trigger="updateSummary from:body" hx-get="/summary" hx-swap="innerHTML">
+      {% include "_summary.html" %}
+    </div>
+    <div class="footer-actions">
+      <button id="next-btn" class="secondary" onclick="loadNextBatch(false)" title="Skip the rest of this batch and load the next">Next batch →</button>
+      <button id="apply-btn" onclick="confirmApply()">Apply selected</button>
+    </div>
+  </footer>
+
+  <div id="apply-modal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Confirm: apply changes to YouTube Music?</h3>
+      <p id="modal-text"></p>
+      <p class="dim" id="modal-note">Click <strong>Yes, apply</strong> to actually write to your YTM library, or Cancel to keep reviewing.</p>
+      <div id="progress-section" class="hidden">
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+        <p id="progress-text" class="dim"></p>
+        <p id="progress-current" class="dim"></p>
+      </div>
+      <pre id="modal-output" class="hidden"></pre>
+      <div class="modal-actions">
+        <button id="modal-cancel">Cancel</button>
+        <button id="modal-confirm">Yes, apply</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.body.addEventListener("htmx:afterRequest", (e) => {
+      if (e.detail.elt.dataset.refreshSummary === "1") {
+        htmx.trigger("body", "updateSummary");
+      }
+    });
+
+    async function loadNextBatch(askIfPending) {
+      const summary = document.getElementById("summary").innerText;
+      const hasSelections = /[1-9]\d* albums/.test(summary) || /[1-9]\d* videos/.test(summary);
+      if (askIfPending && hasSelections) {
+        if (!confirm("You have pending selections that haven't been applied. Discard them and load the next batch?")) {
+          return;
+        }
+      }
+      const btn = document.getElementById("next-btn");
+      btn.disabled = true; btn.innerText = "Fetching next batch…";
+      const resp = await fetch("/next-batch", { method: "POST", redirect: "manual" });
+      window.location.href = "/";
+    }
+
+    async function confirmApply() {
+      const summary = document.getElementById("summary").innerText.trim();
+      const modal = document.getElementById("apply-modal");
+      document.getElementById("modal-text").innerText = "About to: " + summary + ".";
+      document.getElementById("modal-output").classList.add("hidden");
+      modal.classList.remove("hidden");
+    }
+    document.getElementById("modal-cancel").onclick = () =>
+      document.getElementById("apply-modal").classList.add("hidden");
+    document.getElementById("modal-confirm").onclick = async () => {
+      const btn = document.getElementById("modal-confirm");
+      const cancel = document.getElementById("modal-cancel");
+      const note = document.getElementById("modal-note");
+      const progressSection = document.getElementById("progress-section");
+      const progressFill = document.getElementById("progress-fill");
+      const progressText = document.getElementById("progress-text");
+      const progressCurrent = document.getElementById("progress-current");
+
+      btn.disabled = true; btn.innerText = "Applying…";
+      cancel.disabled = true;
+      note.innerText = "Hitting YouTube Music — adding one item at a time.";
+      progressSection.classList.remove("hidden");
+
+      try {
+        const resp = await fetch("/apply", { method: "POST" });
+        const startBody = await resp.json();
+        if (resp.status !== 200) {
+          throw new Error(startBody.status || "could not start");
+        }
+      } catch (e) {
+        note.innerHTML = '<strong style="color:#d33">Apply failed to start: ' + e.message + '</strong>';
+        btn.innerText = "Close";
+        btn.disabled = false;
+        btn.onclick = () => document.getElementById("apply-modal").classList.add("hidden");
+        return;
+      }
+
+      // Poll /apply-progress every 1s until status is done or error
+      const startTime = Date.now();
+      const poll = async () => {
+        try {
+          const r = await fetch("/apply-progress");
+          const s = await r.json();
+          const total = s.total || 0;
+          const applied = s.applied || 0;
+          const pct = total > 0 ? Math.round((applied / total) * 100) : 0;
+          progressFill.style.width = pct + "%";
+
+          const elapsed = (Date.now() - startTime) / 1000;
+          const rate = applied > 0 ? elapsed / applied : 0;
+          const eta = rate > 0 && applied < total ? Math.round((total - applied) * rate) : 0;
+          const etaStr = eta > 60 ? `~${Math.round(eta / 60)} min remaining` : (eta > 0 ? `~${eta}s remaining` : "");
+          progressText.innerText = `${applied} / ${total}  (${pct}%)  ${etaStr}`;
+          progressCurrent.innerText = s.current ? "Now adding: " + s.current : "";
+
+          if (s.status === "done") {
+            const t = s.tallies || {};
+            const heading = `Added ${t.added_album || 0} albums · ${t.added_video || 0} videos · ` +
+                            `${t.skipped || 0} skipped · ${t.error || 0} errors`;
+            const out = document.getElementById("modal-output");
+            out.classList.remove("hidden");
+            out.innerText = heading + "\n\nReport: " + (s.report_md || "(none)");
+            note.innerHTML = '<strong style="color:var(--green)">Done.</strong> Check YouTube Music → Library → Albums.';
+            btn.innerText = "Load next batch →";
+            btn.disabled = false;
+            btn.onclick = async () => {
+              btn.disabled = true; btn.innerText = "Fetching…";
+              await fetch("/next-batch", { method: "POST", redirect: "manual" });
+              window.location.href = "/";
+            };
+            cancel.innerText = "Close";
+            cancel.disabled = false;
+            cancel.onclick = () => location.reload();
+            return;
+          }
+          if (s.status === "error") {
+            note.innerHTML = '<strong style="color:#d33">Apply failed: ' + (s.error || "unknown") + '</strong>';
+            btn.innerText = "Close";
+            btn.disabled = false;
+            btn.onclick = () => location.reload();
+            cancel.disabled = false;
+            return;
+          }
+          setTimeout(poll, 1000);
+        } catch (e) {
+          setTimeout(poll, 2000);
+        }
+      };
+      poll();
+    };
+  </script>
+</body>
+</html>

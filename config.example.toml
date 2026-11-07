@@ -1,0 +1,23 @@
+# Copy to ~/.config/discogs-sync/config.toml and fill in.
+# Access tokens are NOT stored here — they live in your OS keyring.
+
+[discogs]
+username = ""              # auto-filled on first login
+default_folder = "Uncategorized"
+consumer_key = ""          # from https://www.discogs.com/settings/developers
+consumer_secret = ""
+
+[match]
+strong_threshold = 0.90    # >= this AND clear of runner-up by 0.05 -> "strong"
+review_threshold = 0.70    # >= this otherwise -> "needs review"
+video_threshold = 0.60     # >= this for a YouTube video fallback to surface
+autoselect_threshold = 0.75
+
+[ytmusic]
+video_fallback_playlist = "Discogs — Video Only"
+# Only needed for the (currently broken) OAuth path:
+# client_id = ""
+# client_secret = ""
+
+[state]
+# db_path = "~/.local/share/discogs-sync/state.db"

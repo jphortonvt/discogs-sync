@@ -1,0 +1,64 @@
+{% set has_selection = selections.get(r.release.source_id) %}
+<li class="row review" id="row-{{ r.release.source_id }}">
+  <label class="row-check" title="Uncheck to skip this release">
+    <input
+      type="checkbox"
+      {% if has_selection %}checked{% endif %}
+      hx-post="/select"
+      hx-trigger="change[!this.checked]"
+      hx-swap="none"
+      data-refresh-summary="1"
+      hx-vals='{"release_id": "{{ r.release.source_id }}", "kind": "none", "target_id": ""}'
+    />
+  </label>
+  <div class="row-body">
+    <div class="row-line">
+      <span class="left">{{ r.release.artist }} — {{ r.release.title }}{% if r.release.year %} ({{ r.release.year }}){% endif %}</span>
+      <span class="left sub dim">
+        {% if r.release.label %}{{ r.release.label }}{% endif %}
+        {% if r.release.format %}· {{ r.release.format }}{% endif %}
+      </span>
+    </div>
+    <ul class="candidates">
+      {% for sc in r.candidates[:3] %}
+        <li>
+          <label>
+            <input
+              type="radio"
+              name="cand-{{ r.release.source_id }}"
+              hx-post="/select"
+              hx-trigger="change"
+              hx-swap="none"
+              data-refresh-summary="1"
+              hx-vals='{
+                "release_id": "{{ r.release.source_id }}",
+                "kind": "album",
+                "target_id": "{{ sc.candidate.target_id }}",
+                "title": {{ sc.candidate.title|tojson }},
+                "artist": {{ sc.candidate.artist|tojson }}
+              }'
+              {% if selections.get(r.release.source_id) and selections[r.release.source_id]['id'] == sc.candidate.target_id %}checked{% endif %}
+            />
+            <span class="cand-text">{{ sc.candidate.artist }} — {{ sc.candidate.title }}{% if sc.candidate.year %} ({{ sc.candidate.year }}){% endif %}</span>
+            <span class="score">{{ (sc.score * 100)|int }}%</span>
+          </label>
+        </li>
+      {% endfor %}
+      <li>
+        <label>
+          <input
+            type="radio"
+            name="cand-{{ r.release.source_id }}"
+            hx-post="/select"
+            hx-trigger="change"
+            hx-swap="none"
+            data-refresh-summary="1"
+            hx-vals='{"release_id": "{{ r.release.source_id }}", "kind": "none", "target_id": ""}'
+            {% if not selections.get(r.release.source_id) %}checked{% endif %}
+          />
+          <span class="cand-text dim">None of these</span>
+        </label>
+      </li>
+    </ul>
+  </div>
+</li>

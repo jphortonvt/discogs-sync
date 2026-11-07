@@ -1,0 +1,36 @@
+<li class="row strong">
+  <label class="row-check">
+    <input
+      type="checkbox"
+      {% if selections.get(r.release.source_id) %}checked{% endif %}
+      hx-post="/toggle"
+      hx-trigger="change"
+      hx-swap="none"
+      data-refresh-summary="1"
+      name="on"
+      hx-vals='{
+        "release_id": "{{ r.release.source_id }}",
+        "kind": "album",
+        "target_id": "{{ r.best.candidate.target_id }}",
+        "title": {{ r.best.candidate.title|tojson }},
+        "artist": {{ r.best.candidate.artist|tojson }},
+        "on": "true"
+      }'
+    />
+  </label>
+  <div class="row-body">
+    <div class="row-line">
+      <span class="left">{{ r.release.artist }} — {{ r.release.title }}{% if r.release.year %} ({{ r.release.year }}){% endif %}</span>
+      <span class="arrow">→</span>
+      <span class="right">{{ r.best.candidate.artist }} — {{ r.best.candidate.title }}{% if r.best.candidate.year %} ({{ r.best.candidate.year }}){% endif %}</span>
+      <span class="score">{{ (r.best.score * 100)|int }}%</span>
+    </div>
+    <div class="row-line sub">
+      <span class="left">
+        {% if r.release.label %}{{ r.release.label }}{% endif %}
+        {% if r.release.format %}· {{ r.release.format }}{% endif %}
+      </span>
+      <span class="right dim">ytmusic id: <code>{{ r.best.candidate.target_id }}</code></span>
+    </div>
+  </div>
+</li>
