@@ -7,7 +7,9 @@ from typing import Any
 
 import tomli_w
 
-CONFIG_DIR = Path(os.environ.get("DISCOGS_SYNC_CONFIG_DIR", Path.home() / ".config" / "discogs-sync"))
+CONFIG_DIR = Path(
+    os.environ.get("DISCOGS_SYNC_CONFIG_DIR", Path.home() / ".config" / "discogs-sync")
+)
 CONFIG_PATH = CONFIG_DIR / "config.toml"
 
 DEFAULTS: dict[str, Any] = {

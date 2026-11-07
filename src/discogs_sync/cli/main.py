@@ -4,7 +4,6 @@ import json
 import sys
 import webbrowser
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -17,7 +16,10 @@ from discogs_sync.state import State
 from discogs_sync.targets import ytmusic as ytm
 
 app = typer.Typer(help="Sync your Discogs collection to streaming services.", no_args_is_help=True)
-auth_app = typer.Typer(help="Manage credentials for Discogs and streaming providers.", no_args_is_help=True)
+auth_app = typer.Typer(
+    help="Manage credentials for Discogs and streaming providers.",
+    no_args_is_help=True,
+)
 app.add_typer(auth_app, name="auth")
 
 console = Console()
@@ -30,7 +32,12 @@ _load_ytmusic_auth = auth.load_ytmusic_auth
 @auth_app.command("login")
 def auth_login(
     provider: str = typer.Argument(..., help="discogs | ytmusic | ytmusic-browser"),
-    file: Optional[Path] = typer.Option(None, "--file", "-f", help="(ytmusic-browser only) read headers from a file instead of stdin"),
+    file: Path | None = typer.Option(
+        None,
+        "--file",
+        "-f",
+        help="(ytmusic-browser only) read headers from a file instead of stdin",
+    ),
 ):
     """Authorize a provider."""
     if provider == "ytmusic":
@@ -40,7 +47,10 @@ def auth_login(
         _login_ytmusic_browser(file_path=file)
         return
     if provider != "discogs":
-        console.print(f"[red]Unknown provider {provider!r}. Use 'discogs', 'ytmusic', or 'ytmusic-browser'.[/red]")
+        console.print(
+            f"[red]Unknown provider {provider!r}. "
+            "Use 'discogs', 'ytmusic', or 'ytmusic-browser'.[/red]"
+        )
         raise typer.Exit(2)
 
     creds = config.discogs_consumer_credentials()
@@ -117,7 +127,7 @@ def _login_ytmusic_browser(file_path: Path | None = None) -> None:
         console.print("\n[dim]First 3 lines of what you pasted:[/dim]")
         for line in raw.splitlines()[:3]:
             console.print(f"  [dim]{line[:120]}[/dim]")
-        raise typer.Exit(2)
+        raise typer.Exit(2) from exc
 
     secrets.set_token("ytmusic", "browser_headers", header_json)
     console.print("\n[green]YouTube Music browser auth saved.[/green]")
@@ -192,7 +202,10 @@ def folders():
     cfg = config.load()
     username = cfg["discogs"]["username"]
     if not username:
-        console.print("[red]No Discogs username on file.[/red] Re-run: discogs-sync auth login discogs")
+        console.print(
+            "[red]No Discogs username on file.[/red] "
+            "Re-run: discogs-sync auth login discogs"
+        )
         raise typer.Exit(2)
 
     adapter = ds.DiscogsAdapter(auth, username=username)
@@ -202,10 +215,14 @@ def folders():
 
 @app.command()
 def dump(
-    folder: Optional[str] = typer.Option(None, "--folder", "-f", help="Discogs folder name"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Write JSON to this path (default: stdout)"),
-    full: bool = typer.Option(False, "--full", help="Fetch full release for each item (slow; needed for tracks)"),
-    limit: Optional[int] = typer.Option(None, "--limit", help="Stop after N releases (for testing)"),
+    folder: str | None = typer.Option(None, "--folder", "-f", help="Discogs folder name"),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Write JSON to this path (default: stdout)"
+    ),
+    full: bool = typer.Option(
+        False, "--full", help="Fetch full release for each item (slow; needed for tracks)"
+    ),
+    limit: int | None = typer.Option(None, "--limit", help="Stop after N releases (for testing)"),
 ):
     """Dump a Discogs folder to JSON."""
     auth = _load_discogs_auth()
@@ -216,7 +233,10 @@ def dump(
     username = cfg["discogs"]["username"]
     folder = folder or cfg["discogs"]["default_folder"]
     if not username:
-        console.print("[red]No Discogs username on file.[/red] Re-run: discogs-sync auth login discogs")
+        console.print(
+            "[red]No Discogs username on file.[/red] "
+            "Re-run: discogs-sync auth login discogs"
+        )
         raise typer.Exit(2)
 
     adapter = ds.DiscogsAdapter(auth, username=username)
@@ -243,12 +263,18 @@ def _require_both_auths() -> tuple[ds.DiscogsAuth, ytm.YTMusicAuth, str]:
         raise typer.Exit(2)
     yauth = _load_ytmusic_auth()
     if yauth is None:
-        console.print("[red]Not logged in to YouTube Music.[/red] Run: discogs-sync auth login ytmusic")
+        console.print(
+            "[red]Not logged in to YouTube Music.[/red] "
+            "Run: discogs-sync auth login ytmusic"
+        )
         raise typer.Exit(2)
     cfg = config.load()
     username = cfg["discogs"]["username"]
     if not username:
-        console.print("[red]No Discogs username on file.[/red] Re-run: discogs-sync auth login discogs")
+        console.print(
+            "[red]No Discogs username on file.[/red] "
+            "Re-run: discogs-sync auth login discogs"
+        )
         raise typer.Exit(2)
     return dauth, yauth, username
 
@@ -256,13 +282,23 @@ def _require_both_auths() -> tuple[ds.DiscogsAuth, ytm.YTMusicAuth, str]:
 @app.command("sync")
 def sync_cmd(
     target: str = typer.Argument("ytmusic"),
-    folder: Optional[str] = typer.Option(None, "--folder", "-f"),
+    folder: str | None = typer.Option(None, "--folder", "-f"),
     full: bool = typer.Option(False, "--full", help="Fetch tracklists from Discogs (slower)"),
-    apply: bool = typer.Option(False, "--apply", help="Auto-add albums ≥ autoselect threshold; mark others as skipped"),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Auto-add albums ≥ autoselect threshold; mark others as skipped",
+    ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Don't prompt before applying"),
-    limit: Optional[int] = typer.Option(None, "--limit", help="Stop after N releases (for testing)"),
-    redo: bool = typer.Option(False, "--redo", help="Re-process releases already marked added/skipped in the state DB"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would happen but don't write to YTM"),
+    limit: int | None = typer.Option(None, "--limit", help="Stop after N releases (for testing)"),
+    redo: bool = typer.Option(
+        False,
+        "--redo",
+        help="Re-process releases already marked added/skipped in the state DB",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would happen but don't write to YTM"
+    ),
 ):
     """Headless: match a folder against the target library and (optionally) apply strong matches."""
     if target != "ytmusic":
@@ -304,7 +340,10 @@ def sync_cmd(
             counts["with_video"] += 1
 
     if not results:
-        console.print("[green]Nothing left to process[/green] — everything in this folder is already added or skipped.")
+        console.print(
+            "[green]Nothing left to process[/green] — "
+            "everything in this folder is already added or skipped."
+        )
         console.print("Use [bold]--redo[/bold] to re-process previously skipped releases.")
         state.finish_run(run_id, {"counts": counts, "folder": folder, "applied": False})
         return
@@ -322,7 +361,9 @@ def sync_cmd(
 
     if not apply:
         state.finish_run(run_id, {"counts": counts, "folder": folder, "applied": False})
-        console.print("\nRun [bold]discogs-sync review[/bold] to open the UI, or re-run with --apply.")
+        console.print(
+            "\nRun [bold]discogs-sync review[/bold] to open the UI, or re-run with --apply."
+        )
         return
 
     # Build auto-selections: any album ≥ autoselect threshold, plus video fallbacks
@@ -337,14 +378,18 @@ def sync_cmd(
             will_skip.append(r.release.source_id)
 
     console.print(
-        f"\n[bold]Plan[/bold]: add {sum(1 for s in selections.values() if s['kind'] == 'album')} albums, "
+        f"\n[bold]Plan[/bold]: add "
+        f"{sum(1 for s in selections.values() if s['kind'] == 'album')} albums, "
         f"add {sum(1 for s in selections.values() if s['kind'] == 'video')} videos, "
         f"skip {len(will_skip)} (will need manual review)."
     )
 
     if dry_run:
         console.print("\n[yellow]--dry-run set; nothing written.[/yellow]")
-        state.finish_run(run_id, {"counts": counts, "folder": folder, "applied": False, "dry_run": True})
+        state.finish_run(
+            run_id,
+            {"counts": counts, "folder": folder, "applied": False, "dry_run": True},
+        )
         return
 
     if not yes:
@@ -355,7 +400,9 @@ def sync_cmd(
     results_by_id = {r.release.source_id: r for r in results}
     playlist_name = cfg["ytmusic"]["video_fallback_playlist"]
     console.print("[cyan]Applying…[/cyan]")
-    tallies = engine.apply_selections(selections, run_id, playlist_name, results_by_id, progress=_progress)
+    tallies = engine.apply_selections(
+        selections, run_id, playlist_name, results_by_id, progress=_progress
+    )
 
     # Mark every unselected release as skipped so it doesn't surface next time
     for release_id in will_skip:
@@ -371,7 +418,10 @@ def sync_cmd(
     reports_dir = Path(cfg["state"]["db_path"]).parent / "reports"
     md_path, _ = write_reports(reports_dir, run_id, folder, tallies, results)
     console.print(f"\n[green]Done.[/green] {tallies}\n  Report: {md_path}")
-    console.print("\nRe-run [bold]discogs-sync sync ytmusic --folder " + folder + " --apply --yes[/bold] to continue with the next batch.")
+    console.print(
+        "\nRe-run [bold]discogs-sync sync ytmusic --folder " + folder +
+        " --apply --yes[/bold] to continue with the next batch."
+    )
 
 
 def _match_to_dict(r) -> dict:
@@ -393,7 +443,10 @@ def report_show():
         raise typer.Exit(0)
     summary = latest["summary"]
     counts = summary.get("counts", {})
-    console.print(f"[bold]Run #{latest['id']}[/bold]  ({latest['started_at']} → {latest['finished_at']})")
+    console.print(
+        f"[bold]Run #{latest['id']}[/bold]  "
+        f"({latest['started_at']} → {latest['finished_at']})"
+    )
     console.print(f"  Folder: {summary.get('folder')!r}  Applied: {summary.get('applied')}")
     for k, v in counts.items():
         console.print(f"  {k:>16} : {v}")
@@ -422,11 +475,13 @@ def report_all_cmd():
 
 @app.command("review")
 def review_cmd(
-    folder: Optional[str] = typer.Option(None, "--folder", "-f"),
+    folder: str | None = typer.Option(None, "--folder", "-f"),
     full: bool = typer.Option(False, "--full"),
     port: int = typer.Option(8765, "--port"),
-    rematch: bool = typer.Option(False, "--rematch", help="Re-run matching even if a saved session exists"),
-    limit: Optional[int] = typer.Option(None, "--limit", help="Match only the first N releases"),
+    rematch: bool = typer.Option(
+        False, "--rematch", help="Re-run matching even if a saved session exists"
+    ),
+    limit: int | None = typer.Option(None, "--limit", help="Match only the first N releases"),
 ):
     """Launch the local review UI."""
     from discogs_sync.review.server import serve
@@ -443,12 +498,19 @@ def ytm_search(
     """Probe the YouTube Music search for an artist + album."""
     auth = _load_ytmusic_auth()
     if auth is None:
-        console.print("[red]Not logged in to YouTube Music.[/red] Run: discogs-sync auth login ytmusic")
+        console.print(
+            "[red]Not logged in to YouTube Music.[/red] "
+            "Run: discogs-sync auth login ytmusic"
+        )
         raise typer.Exit(2)
     target = ytm.YTMusicAdapter(auth)
     if videos:
         for v in target.search_album_video(artist, title, limit=limit):
-            dur = f"{v.duration_seconds//60}:{v.duration_seconds%60:02d}" if v.duration_seconds else "?"
+            dur = (
+                f"{v.duration_seconds//60}:{v.duration_seconds%60:02d}"
+                if v.duration_seconds
+                else "?"
+            )
             tag = " [topic]" if v.is_topic_channel else ""
             console.print(f"  {v.title} — {v.channel}{tag} · {dur} · {v.target_id}")
     else:

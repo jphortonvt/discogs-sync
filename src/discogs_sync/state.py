@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sync_runs (
@@ -47,7 +48,7 @@ CREATE TABLE IF NOT EXISTS review_session (
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class State:
@@ -143,7 +144,8 @@ class State:
         with self.transaction() as conn:
             conn.execute("DELETE FROM review_session")
             conn.execute(
-                "INSERT INTO review_session (id, folder, payload_json, created_at) VALUES (1, ?, ?, ?)",
+                "INSERT INTO review_session (id, folder, payload_json, created_at) "
+                "VALUES (1, ?, ?, ?)",
                 (folder, json.dumps(payload), now_iso()),
             )
 
@@ -152,7 +154,11 @@ class State:
         row = cur.fetchone()
         if not row:
             return None
-        return {"folder": row["folder"], "payload": json.loads(row["payload_json"]), "created_at": row["created_at"]}
+        return {
+            "folder": row["folder"],
+            "payload": json.loads(row["payload_json"]),
+            "created_at": row["created_at"],
+        }
 
     def clear_review_session(self) -> None:
         with self.transaction() as conn:
@@ -170,7 +176,8 @@ class State:
             conn.execute(
                 """
                 INSERT INTO review_selections
-                    (discogs_release_id, chosen_target_kind, chosen_target_id, chosen_payload_json, updated_at)
+                    (discogs_release_id, chosen_target_kind, chosen_target_id,
+                     chosen_payload_json, updated_at)
                 VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(discogs_release_id) DO UPDATE SET
                     chosen_target_kind = excluded.chosen_target_kind,
@@ -178,7 +185,13 @@ class State:
                     chosen_payload_json = excluded.chosen_payload_json,
                     updated_at = excluded.updated_at
                 """,
-                (release_id, chosen_target_kind, chosen_target_id, json.dumps(payload) if payload else None, now_iso()),
+                (
+                    release_id,
+                    chosen_target_kind,
+                    chosen_target_id,
+                    json.dumps(payload) if payload else None,
+                    now_iso(),
+                ),
             )
 
     def remove_selection(self, release_id: str) -> None:
@@ -191,7 +204,11 @@ class State:
             out[row["discogs_release_id"]] = {
                 "kind": row["chosen_target_kind"],
                 "id": row["chosen_target_id"],
-                "payload": json.loads(row["chosen_payload_json"]) if row["chosen_payload_json"] else None,
+                "payload": (
+                    json.loads(row["chosen_payload_json"])
+                    if row["chosen_payload_json"]
+                    else None
+                ),
             }
         return out
 

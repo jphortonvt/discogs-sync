@@ -65,7 +65,11 @@ def test_compute_matches_buckets(tmp_path):
         _rel("2", "Mystery Artist", "Mystery Album"),
     ]
     albums = {
-        "Wire|Pink Flag": [AlbumCandidate(target="t", target_id="A", artist="Wire", title="Pink Flag", year=2000)],
+        "Wire|Pink Flag": [
+            AlbumCandidate(
+                target="t", target_id="A", artist="Wire", title="Pink Flag", year=2000
+            )
+        ],
     }
     source = FakeSource(releases)
     target = FakeTarget(album_map=albums, video_map={})
@@ -99,7 +103,14 @@ def test_apply_selections_album_and_video(tmp_path):
     rel = _rel("1", "Wire", "Pink Flag")
     rel2 = _rel("2", "Obscure", "Tape Only")
     cand = AlbumCandidate(target="t", target_id="A", artist="Wire", title="Pink Flag", year=2000)
-    vid = VideoCandidate(target="t", target_id="V", title="Obscure - Tape Only (Full Album)", channel="Obscure - Topic", duration_seconds=2400, is_topic_channel=True)
+    vid = VideoCandidate(
+        target="t",
+        target_id="V",
+        title="Obscure - Tape Only (Full Album)",
+        channel="Obscure - Topic",
+        duration_seconds=2400,
+        is_topic_channel=True,
+    )
 
     source = FakeSource([rel, rel2])
     target = FakeTarget(
@@ -135,7 +146,9 @@ def test_apply_skips_already_added(tmp_path):
     source = FakeSource([rel])
     target = FakeTarget(album_map={"Wire|Pink Flag": [cand]})
     state = State(tmp_path / "s.db")
-    state.upsert_status("1", "fake_target", status="added_album", target_kind="album", target_id="A")
+    state.upsert_status(
+        "1", "fake_target", status="added_album", target_kind="album", target_id="A"
+    )
     engine = SyncEngine(source, target, state, MatchOptions(fetch_videos=False))
 
     results = engine.compute_matches("F")

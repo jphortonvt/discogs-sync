@@ -87,7 +87,9 @@ def score_album(release: Release, candidate: AlbumCandidate) -> ScoredCandidate:
     )
 
 
-def bucketize(scored: list[ScoredCandidate], strong_threshold: float, review_threshold: float) -> Bucket:
+def bucketize(
+    scored: list[ScoredCandidate], strong_threshold: float, review_threshold: float
+) -> Bucket:
     if not scored:
         return "no_album_match"
     best = scored[0].score

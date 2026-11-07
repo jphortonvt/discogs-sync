@@ -18,7 +18,9 @@ def test_normalize_artist_strips_the():
 
 
 def test_normalize_artist_canonicalizes_separators():
-    assert normalize_artist("Brian Eno and David Byrne") == normalize_artist("Brian Eno & David Byrne")
+    assert normalize_artist("Brian Eno and David Byrne") == normalize_artist(
+        "Brian Eno & David Byrne"
+    )
     assert normalize_artist("Jay-Z featuring Beyonce") == normalize_artist("Jay-Z & Beyonce")
     assert normalize_artist("Kanye West feat. Jay-Z") == normalize_artist("Kanye West & Jay-Z")
 

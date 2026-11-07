@@ -52,7 +52,6 @@ def test_parse_duration():
 
 
 def test_normalize_basic():
-    rate = _RateLimiter(1000, 60.0)
     item = make_item({
         "id": 12345,
         "title": "Spiderland",
@@ -78,7 +77,6 @@ def test_normalize_basic():
 
 
 def test_normalize_drops_none_catno():
-    rate = _RateLimiter(1000, 60.0)
     item = make_item({
         "id": 1,
         "title": "x",
@@ -91,7 +89,6 @@ def test_normalize_drops_none_catno():
 
 
 def test_normalize_full_pulls_tracks():
-    rate = _RateLimiter(1000, 60.0)
     item = make_item(
         {
             "id": 99,
@@ -103,7 +100,13 @@ def test_normalize_full_pulls_tracks():
         release_data={
             "tracklist": [
                 SimpleNamespace(data={"position": "A1", "title": "Reuters", "duration": "3:09"}),
-                SimpleNamespace(data={"position": "A2", "title": "Field Day for the Sundays", "duration": "0:28"}),
+                SimpleNamespace(
+                    data={
+                        "position": "A2",
+                        "title": "Field Day for the Sundays",
+                        "duration": "0:28",
+                    }
+                ),
             ]
         },
     )

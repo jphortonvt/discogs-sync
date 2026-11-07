@@ -114,7 +114,9 @@ class YTMusicAdapter(LibraryTarget):
             raise
         return [_album_from_search(a) for a in results[:limit]]
 
-    def search_album_video(self, artist: str, title: str, *, limit: int = 5) -> list[VideoCandidate]:
+    def search_album_video(
+        self, artist: str, title: str, *, limit: int = 5
+    ) -> list[VideoCandidate]:
         query = f"{artist} {title} full album".strip()
         results = self._client.search(query, filter="videos", limit=limit) or []
         return [_video_from_search(v) for v in results[:limit]]
@@ -134,7 +136,10 @@ class YTMusicAdapter(LibraryTarget):
                 return p["playlistId"]
         return self._client.create_playlist(
             title=name,
-            description="Created by discogs-sync. Holds full-album YouTube videos for releases not on YouTube Music.",
+            description=(
+                "Created by discogs-sync. Holds full-album YouTube videos "
+                "for releases not on YouTube Music."
+            ),
             privacy_status="PRIVATE",
         )
 
@@ -233,7 +238,8 @@ def deserialize_token(s: str) -> dict:
 
 
 def setup_browser_auth(raw_headers: str) -> str:
-    """Convert raw HTTP headers OR a "Copy as cURL" blob into the JSON auth blob ytmusicapi expects."""
+    """Convert raw HTTP headers OR a "Copy as cURL" blob into the JSON auth blob
+    that ytmusicapi expects."""
     from ytmusicapi.setup import setup
     text = _normalize_input(raw_headers)
     return setup(filepath=None, headers_raw=text)

@@ -17,7 +17,9 @@ def _rel(artist="Slint", title="Spiderland", year=1991, tracks=None) -> Release:
 
 
 def _cand(artist="Slint", title="Spiderland", year=1991, tid="MPRE_x", **kw) -> AlbumCandidate:
-    return AlbumCandidate(target="ytmusic", target_id=tid, artist=artist, title=title, year=year, **kw)
+    return AlbumCandidate(
+        target="ytmusic", target_id=tid, artist=artist, title=title, year=year, **kw
+    )
 
 
 def test_score_album_exact_match():
@@ -52,7 +54,12 @@ def test_score_album_year_far_apart_penalized():
 
 def test_bucketize_strong_when_clear_winner():
     scored = sorted(
-        [score_album(_rel(), _cand()), score_album(_rel(), _cand(title="Unrelated Album", year=1970, tid="MPRE_2"))],
+        [
+            score_album(_rel(), _cand()),
+            score_album(
+                _rel(), _cand(title="Unrelated Album", year=1970, tid="MPRE_2")
+            ),
+        ],
         key=lambda s: s.score,
         reverse=True,
     )
@@ -94,7 +101,12 @@ def test_match_release_strong_with_video_skipped():
 
 
 def test_match_release_no_match_picks_plausible_video():
-    r = _rel("Obscure Band", "Lost Album", year=1973, tracks=[Track(title="Song", duration_seconds=600)])
+    r = _rel(
+        "Obscure Band",
+        "Lost Album",
+        year=1973,
+        tracks=[Track(title="Song", duration_seconds=600)],
+    )
     video = VideoCandidate(
         target="ytmusic",
         target_id="vid1",
@@ -111,5 +123,11 @@ def test_match_release_no_match_picks_plausible_video():
 
 def test_score_video_low_for_short_video():
     r = _rel()
-    v = VideoCandidate(target="ytmusic", target_id="x", title="Slint Spiderland", channel="x", duration_seconds=120)
+    v = VideoCandidate(
+        target="ytmusic",
+        target_id="x",
+        title="Slint Spiderland",
+        channel="x",
+        duration_seconds=120,
+    )
     assert score_video(r, v) < 0.7

@@ -4,7 +4,7 @@ import threading
 import time
 import webbrowser
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Form, Request
@@ -33,7 +33,12 @@ class ReviewContext:
         self.rematch = rematch
         self.limit = limit
         # Apply-job state shared between the background thread and the polling endpoint.
-        self.apply_state: dict[str, Any] = {"status": "idle", "applied": 0, "total": 0, "tallies": {}}
+        self.apply_state: dict[str, Any] = {
+            "status": "idle",
+            "applied": 0,
+            "total": 0,
+            "tallies": {},
+        }
         self._apply_lock = threading.Lock()
         # Match-job state, populated by the background matching thread.
         self.match_state: dict[str, Any] = {
@@ -45,7 +50,9 @@ class ReviewContext:
         dauth = auth.load_discogs_auth()
         yauth = auth.load_ytmusic_auth()
         if not dauth or not yauth:
-            raise RuntimeError("Both Discogs and YouTube Music must be authorized before running review.")
+            raise RuntimeError(
+                "Both Discogs and YouTube Music must be authorized before running review."
+            )
 
         username = cfg["discogs"]["username"]
         if not username:
@@ -85,7 +92,9 @@ class ReviewContext:
         existing = self.state.load_review_session()
         if existing and not self.rematch and existing.get("folder") == self.folder:
             try:
-                self.results = [MatchResult.model_validate(r) for r in existing["payload"]["results"]]
+                self.results = [
+                    MatchResult.model_validate(r) for r in existing["payload"]["results"]
+                ]
                 self.results_by_id = {r.release.source_id: r for r in self.results}
                 self.match_state["status"] = "done"
                 self.match_state["total"] = len(self.results)
@@ -124,7 +133,9 @@ class ReviewContext:
                     self.match_state["total"] = n
                     self.match_state["i"] = 0
                     self.match_state["fetch_msg"] = name
-                elif name.startswith("Fetching your YTM library") or name.startswith("Annotating against library"):
+                elif name.startswith("Fetching your YTM library") or name.startswith(
+                    "Annotating against library"
+                ):
                     self.match_state["phase"] = "annotate"
                     self.match_state["i"] = i
                     self.match_state["total"] = n
@@ -136,13 +147,22 @@ class ReviewContext:
                     self.match_state["current"] = name
 
             results = self.engine.compute_matches(
-                self.folder, full=self.full, limit=self.limit, skip_processed=True, progress=progress
+                self.folder,
+                full=self.full,
+                limit=self.limit,
+                skip_processed=True,
+                progress=progress,
             )
-            results = self.engine.annotate_with_library(results, target_name="ytmusic", progress=progress)
+            results = self.engine.annotate_with_library(
+                results, target_name="ytmusic", progress=progress
+            )
 
             self.state.save_review_session(
                 self.folder,
-                {"results": [r.model_dump(mode="json") for r in results], "options": self.options.__dict__},
+                {
+                    "results": [r.model_dump(mode="json") for r in results],
+                    "options": self.options.__dict__,
+                },
             )
             self.results = results
             self.results_by_id = {r.release.source_id: r for r in results}
@@ -173,11 +193,16 @@ def create_app(ctx: ReviewContext) -> FastAPI:
         already = [r for r in ctx.results if r.already_in_library]
         strong = [r for r in ctx.results if not r.already_in_library and r.bucket == "strong"]
         review = [r for r in ctx.results if not r.already_in_library and r.bucket == "review"]
-        no_match = [r for r in ctx.results if not r.already_in_library and r.bucket == "no_album_match"]
+        no_match = [
+            r
+            for r in ctx.results
+            if not r.already_in_library and r.bucket == "no_album_match"
+        ]
         return strong, review, no_match, already
 
     def _initialize_default_selections():
-        """Pre-check strong matches AND review-bucket items whose best score >= autoselect_threshold.
+        """Pre-check strong matches AND review-bucket items whose best score is
+        at or above autoselect_threshold.
         Skip already-in-library releases — they don't need re-adding."""
         existing = ctx.state.all_selections()
         autoselect = ctx.cfg["match"].get("autoselect_threshold", 0.75)
@@ -306,14 +331,26 @@ def create_app(ctx: ReviewContext) -> FastAPI:
 
             try:
                 tallies = ctx.engine.apply_selections(
-                    snapshot_selections, run_id, playlist_name, ctx.results_by_id, progress=_progress
+                    snapshot_selections,
+                    run_id,
+                    playlist_name,
+                    ctx.results_by_id,
+                    progress=_progress,
                 )
-                counts = {b: sum(1 for r in ctx.results if r.bucket == b) for b in ("strong", "review", "no_album_match")}
-                ctx.state.finish_run(run_id, {"counts": tallies | counts, "folder": ctx.folder, "applied": True})
+                counts = {
+                    b: sum(1 for r in ctx.results if r.bucket == b)
+                    for b in ("strong", "review", "no_album_match")
+                }
+                ctx.state.finish_run(
+                    run_id,
+                    {"counts": tallies | counts, "folder": ctx.folder, "applied": True},
+                )
                 ctx.state.clear_review_session()
                 reports_dir = Path(ctx.cfg["state"]["db_path"]).parent / "reports"
                 from discogs_sync.report import write_reports
-                md_path, json_path = write_reports(reports_dir, run_id, ctx.folder, tallies, ctx.results)
+                md_path, json_path = write_reports(
+                    reports_dir, run_id, ctx.folder, tallies, ctx.results
+                )
                 ctx.apply_state.update({
                     "status": "done",
                     "tallies": tallies,
@@ -343,12 +380,19 @@ def create_app(ctx: ReviewContext) -> FastAPI:
     return app
 
 
-def serve(*, folder: Optional[str], full: bool, port: int, rematch: bool, limit: int | None = None) -> None:
+def serve(
+    *,
+    folder: str | None,
+    full: bool,
+    port: int,
+    rematch: bool,
+    limit: int | None = None,
+) -> None:
     try:
         ctx = ReviewContext(folder=folder, full=full, rematch=rematch, limit=limit)
     except RuntimeError as exc:
         print(f"Error: {exc}")
-        raise SystemExit(2)
+        raise SystemExit(2) from exc
 
     app = create_app(ctx)
     url = f"http://localhost:{port}"

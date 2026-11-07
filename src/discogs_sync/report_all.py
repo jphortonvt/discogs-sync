@@ -16,7 +16,9 @@ from typing import Any
 from discogs_sync.state import State
 
 
-def collect_all(reports_dir: Path, state: State, target: str = "ytmusic") -> dict[str, dict[str, Any]]:
+def collect_all(
+    reports_dir: Path, state: State, target: str = "ytmusic"
+) -> dict[str, dict[str, Any]]:
     """Return {discogs_release_id: row_dict}, merged across all runs + state DB."""
     by_id: dict[str, dict[str, Any]] = {}
 
@@ -61,7 +63,8 @@ def collect_all(reports_dir: Path, state: State, target: str = "ytmusic") -> dic
 
     # Pass 2: overlay final status from state DB (source of truth for what's in YTM).
     cur = state.conn.execute(
-        "SELECT discogs_release_id, status, target_kind, target_id, confidence FROM release_status WHERE target=?",
+        "SELECT discogs_release_id, status, target_kind, target_id, confidence "
+        "FROM release_status WHERE target=?",
         (target,),
     )
     for row in cur:
@@ -131,7 +134,8 @@ def write_markdown(rows: list[dict], out_path: Path) -> None:
         "# discogs-sync — complete sync report",
         "",
         f"**Total Discogs releases processed:** {total}",
-        f"**Had a plausible YouTube Music match:** {has_ytm_match}  ({100*has_ytm_match//max(total,1)}%)",
+        f"**Had a plausible YouTube Music match:** {has_ytm_match}  "
+        f"({100*has_ytm_match//max(total,1)}%)",
         f"**No YouTube Music match:** {no_ytm_match}  ({100*no_ytm_match//max(total,1)}%)",
         "",
         "## Final status breakdown",
@@ -139,8 +143,10 @@ def write_markdown(rows: list[dict], out_path: Path) -> None:
         "| Status | Count | What it means |",
         "|---|---:|---|",
         f"| added_album | {counts.get('added_album', 0)} | added to YTM Library → Albums |",
-        f"| added_video | {counts.get('added_video', 0)} | YouTube video added to fallback playlist |",
-        f"| already_present | {counts.get('already_present', 0)} | matched a YTM album already in your library |",
+        f"| added_video | {counts.get('added_video', 0)} | "
+        "YouTube video added to fallback playlist |",
+        f"| already_present | {counts.get('already_present', 0)} | "
+        "matched a YTM album already in your library |",
         f"| skipped | {counts.get('skipped', 0)} | low confidence; you chose not to add |",
         f"| error | {counts.get('error', 0)} | YTM API rejected the write |",
         f"| (not in state DB) | {counts.get('(not in state DB)', 0)} | matched but never applied |",
@@ -177,8 +183,14 @@ def write_markdown(rows: list[dict], out_path: Path) -> None:
                 tid = f"  · `{r['best_ytm_id']}`"
             ytm_match = ""
             if r.get("best_ytm_artist") or r.get("best_ytm_title"):
-                ytm_match = f"  →  *{r.get('best_ytm_artist','?')}* — *{r.get('best_ytm_title','?')}*"
-            lines.append(f"- **{r.get('discogs_artist','?')}** — {r.get('discogs_title','?')}{year}{ytm_match}{score}{tid}")
+                ytm_match = (
+                    f"  →  *{r.get('best_ytm_artist','?')}* — "
+                    f"*{r.get('best_ytm_title','?')}*"
+                )
+            lines.append(
+                f"- **{r.get('discogs_artist','?')}** — "
+                f"{r.get('discogs_title','?')}{year}{ytm_match}{score}{tid}"
+            )
         lines.append("")
 
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")

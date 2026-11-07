@@ -11,7 +11,11 @@ def test_save_drops_nones(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "CONFIG_PATH", cfg_path)
 
     config.save({
-        "discogs": {"username": "testuser", "consumer_key": None, "default_folder": "Uncategorized"},
+        "discogs": {
+            "username": "testuser",
+            "consumer_key": None,
+            "default_folder": "Uncategorized",
+        },
         "ytmusic": {"client_id": None, "client_secret": None, "video_fallback_playlist": "X"},
     })
     text = cfg_path.read_text()

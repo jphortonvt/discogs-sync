@@ -23,7 +23,13 @@ class MatchOptions:
 
 
 class SyncEngine:
-    def __init__(self, source: CollectionSource, target: LibraryTarget, state: State, options: MatchOptions):
+    def __init__(
+        self,
+        source: CollectionSource,
+        target: LibraryTarget,
+        state: State,
+        options: MatchOptions,
+    ):
         self.source = source
         self.target = target
         self.state = state
@@ -68,10 +74,16 @@ class SyncEngine:
             if skipped_processed:
                 extras.append(f"{skipped_processed} already processed")
             suffix = f" ({', '.join(extras)} skipped)" if extras else ""
-            progress(f"Discogs fetch complete: {total} releases{suffix}. Searching YTM next.", total, total)
+            progress(
+                f"Discogs fetch complete: {total} releases{suffix}. Searching YTM next.",
+                total,
+                total,
+            )
         results: list[MatchResult] = []
         for i, release in enumerate(releases, start=1):
-            albums = self.target.search_album(release.artist, release.title, limit=self.options.candidate_limit)
+            albums = self.target.search_album(
+                release.artist, release.title, limit=self.options.candidate_limit
+            )
             initial = match_release(
                 release,
                 albums,
@@ -164,12 +176,18 @@ class SyncEngine:
                     candidate = None
                     if result:
                         candidate = next(
-                            (sc.candidate for sc in result.candidates if sc.candidate.target_id == target_id),
+                            (
+                                sc.candidate
+                                for sc in result.candidates
+                                if sc.candidate.target_id == target_id
+                            ),
                             None,
                         )
                     if candidate is None:
                         from discogs_sync.targets.base import AlbumCandidate
-                        candidate = AlbumCandidate(target=target_name, target_id=target_id, title="", artist="")
+                        candidate = AlbumCandidate(
+                            target=target_name, target_id=target_id, title="", artist=""
+                        )
                     self.target.add_album_to_library(candidate)
                     self.state.upsert_status(
                         release_id, target_name,
@@ -188,7 +206,9 @@ class SyncEngine:
                     video = result.video_candidate if result else None
                     if video is None:
                         from discogs_sync.targets.base import VideoCandidate
-                        video = VideoCandidate(target=target_name, target_id=target_id, title="", channel="")
+                        video = VideoCandidate(
+                            target=target_name, target_id=target_id, title="", channel=""
+                        )
                     self.target.add_video_to_playlist(playlist_id, video)
                     self.state.upsert_status(
                         release_id, target_name,

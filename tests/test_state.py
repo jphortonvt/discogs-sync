@@ -16,7 +16,9 @@ def test_start_finish_run(tmp_path):
 
 def test_upsert_status_idempotent(tmp_path):
     state = State(tmp_path / "state.db")
-    state.upsert_status("1234", "ytmusic", status="added_album", target_kind="album", target_id="MPRE_x")
+    state.upsert_status(
+        "1234", "ytmusic", status="added_album", target_kind="album", target_id="MPRE_x"
+    )
     assert state.is_already_added("1234", "ytmusic")
 
     state.upsert_status("1234", "ytmusic", status="error", target_kind="album", target_id="MPRE_x")
